@@ -9,30 +9,30 @@ provider "google" {
   region  = var.region
 }
 
-# # --- 0. LANDING BUCKET: Pristine Archive
-# resource "google_storage_bucket" "landing_zone" {
-#   name                        = "${var.project_id}-landing-raw-archives"
-#   location                    = "US"
-#   storage_class               = "STANDARD" # Start standard, move to archive via lifecycle
-#   uniform_bucket_level_access = true
+# --- 0. LANDING BUCKET: Pristine Archive
+resource "google_storage_bucket" "landing_zone" {
+  name                        = "${var.project_id}-landing-raw-archives"
+  location                    = "US"
+  storage_class               = "STANDARD" # Start standard, move to archive via lifecycle
+  uniform_bucket_level_access = true
 
-#   # IMMUTABILITY: Prevent deletion/overwrites for 5 years
-#   retention_policy {
-#     is_locked        = true
-#     retention_period = 157680000 # 5 years in seconds
-#   }
+  # IMMUTABILITY: Prevent deletion/overwrites for 5 years
+  retention_policy {
+    is_locked        = true
+    retention_period = 157680000 # 5 years in seconds
+  }
 
-#   # ARCHIVAL: Move to Archive class after 30 days to save costs
-#   lifecycle_rule {
-#     condition {
-#       age = 30
-#     }
-#     action {
-#       type          = "SetStorageClass"
-#       storage_class = "ARCHIVE"
-#     }
-#   }
-# }
+  # ARCHIVAL: Move to Archive class after 30 days to save costs
+  lifecycle_rule {
+    condition {
+      age = 30
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "ARCHIVE"
+    }
+  }
+}
 
 # --- 1. BRONZE LAYER (GCS) ---
 resource "google_storage_bucket" "bronze" {
@@ -50,7 +50,7 @@ resource "google_bigquery_connection" "lake_connection" {
   cloud_resource {}
 }
 
-# 3. NETWORK: Private VPC for Postgres
+# --- 3. NETWORK: Private VPC for Postgres
 resource "google_compute_network" "private_network" {
   name = "medallion-vpc"
 }
@@ -69,7 +69,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
-# 4. SILVER/GOLD LAYER: Managed PostgreSQL
+# --- 4. SILVER/GOLD LAYER: Managed PostgreSQL
 resource "google_sql_database_instance" "appliedcomplexity-db" {
   name             = "appliedcomplexity-${var.env}"
   database_version = "POSTGRES_15"
@@ -82,6 +82,12 @@ resource "google_sql_database_instance" "appliedcomplexity-db" {
       private_network = google_compute_network.private_network.id
     }
   }
+}
+
+# --- 5. SQL LEDGER: The Provenance Anchor
+resource "google_sql_database" "provenance_db" {
+  name     = "provenance_ledger"
+  instance = google_sql_database_instance.appliedcomplexity-db.name
 }
 
 ## Grant BigLake permission to read Bronze
