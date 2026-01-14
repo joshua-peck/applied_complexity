@@ -1,0 +1,13 @@
+# Ignore the .terraform directory
+.terraform/
+
+# Ignore the local state file (use remote state instead)
+*.tfstate
+*.tfstate.*
+
+# Ignore crash log files
+crash.log
+crash.*.log
+
+# Ignore terraform lock files
+*.lock.hcl
