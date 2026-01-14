@@ -1,11 +1,38 @@
-locals {
-  developer_email = "joshua@truecodecapital.com"
+variable "developer_email" {
+  type        = string
+  description = "email for primary dev account running remotely"
+  default     = "joshua@truecodecapital.com"
 }
 
 provider "google" {
   project = var.project_id
   region  = var.region
 }
+
+# # --- 0. LANDING BUCKET: Pristine Archive
+# resource "google_storage_bucket" "landing_zone" {
+#   name                        = "${var.project_id}-landing-raw-archives"
+#   location                    = "US"
+#   storage_class               = "STANDARD" # Start standard, move to archive via lifecycle
+#   uniform_bucket_level_access = true
+
+#   # IMMUTABILITY: Prevent deletion/overwrites for 5 years
+#   retention_policy {
+#     is_locked        = true
+#     retention_period = 157680000 # 5 years in seconds
+#   }
+
+#   # ARCHIVAL: Move to Archive class after 30 days to save costs
+#   lifecycle_rule {
+#     condition {
+#       age = 30
+#     }
+#     action {
+#       type          = "SetStorageClass"
+#       storage_class = "ARCHIVE"
+#     }
+#   }
+# }
 
 # --- 1. BRONZE LAYER (GCS) ---
 resource "google_storage_bucket" "bronze" {
@@ -82,6 +109,6 @@ resource "google_project_iam_member" "mac_read_api" {
 resource "google_project_iam_member" "mac_sql_client" {
   project = var.project_id
   role    = "roles/cloudsql.client"
-  member  = "user:${local.developer_email}"
+  member  = "user:${var.developer_email}"
 }
 
