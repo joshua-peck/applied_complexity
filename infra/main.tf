@@ -1,8 +1,3 @@
-variable "developer_email" {
-  type        = string
-  description = "email for primary dev account running remotely"
-  default     = "joshua@truecodecapital.com"
-}
 
 provider "google" {
   project = var.project_id

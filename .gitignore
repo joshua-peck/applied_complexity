@@ -11,3 +11,15 @@ crash.*.log
 
 # Ignore terraform lock files
 *.lock.hcl
+
+# Never commit env files that may contain secrets
+.env
+
+# Never commit UV junk
+.venv/
+__pycache__
+*.pyc
+*.pyo
+
+# Misc OS 
+.DS_Store
