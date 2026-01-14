@@ -6,7 +6,7 @@ provider "google" {
 
 # --- 0. LANDING BUCKET: Pristine Archive
 resource "google_storage_bucket" "landing_zone" {
-  name                        = "${var.project_id}-landing-raw-archives"
+  name                        = "${var.project_id}-landing-zone"
   location                    = "US"
   storage_class               = "STANDARD" # Start standard, move to archive via lifecycle
   uniform_bucket_level_access = true
