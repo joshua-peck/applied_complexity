@@ -17,3 +17,7 @@ From `infra/modules/medallion_core`
     $ terraform apply \
       -var="appliedcomplexity" \
       -var="env=dev"
+
+# MANAGE SECRETS
+    $ echo -n "YOUR_ACTUAL_FRED_API_KEY" | \
+      gcloud secrets versions add FRED_API_KEY --data-file=- --project appliedcomplexity

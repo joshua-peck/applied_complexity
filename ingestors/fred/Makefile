@@ -7,21 +7,27 @@ build:
 
 run:
 	docker run -it \
-  		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
-  		-v ${ADC}:/tmp/keys/creds.json:ro \
-  		-e LANDING_BUCKET="your-dev-landing-bucket" \
-  		-e BRONZE_BUCKET="your-dev-bronze-bucket" \
-  		-e FRED_API_KEY="your_actual_key" \
-  		$(TAG):$(VERSION)
+		--env-file ../../.env \
+		-v $(ADC):/tmp/keys/creds.json:ro \
+		-e BRONZE_BUCKET="appliedcomplexity-landing-zone" \
+		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+		-t $(TAG):$(VERSION) 
 
 
 liverun:
 	docker run -it \
-		-v $(pwd):/app \ 
-		-v ${ADC}:/tmp/keys/creds.json:ro \
- 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
-		-t$(TAG):$(VERSION) \
- 		uv run main.py
+		--env-file ../../.env \
+		-v $(ADC):/tmp/keys/creds.json:ro \
+		-e BRONZE_BUCKET="appliedcomplexity-landing-zone" \
+		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+		-t $(TAG):$(VERSION) \
+		uv run main.py
+# 	docker run -it \
+# 		-v $(pwd):/app \ 
+# 		-v ${ADC}:/tmp/keys/creds.json:ro \
+#  		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+# 		-t$(TAG):$(VERSION) \
+#  		uv run main.py
 
 
 drop:

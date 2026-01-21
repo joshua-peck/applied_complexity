@@ -23,7 +23,6 @@ WORKDIR /app
 
 # Copy the virtual environment from the builder
 COPY --from=builder /app/.venv /app/.venv
-# COPY --from=builder /app/install /usr/local
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
