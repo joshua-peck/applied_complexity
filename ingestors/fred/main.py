@@ -17,7 +17,6 @@ def run_ingestion():
 
     # 2. Fetch report and report metadata
     fred = Fred(api_key=api_key)
-    # Using 'realtime_start' ensures we see the data as it was known today
     data = fred.get_series(series_id)
 
     # Get series metadata
@@ -49,7 +48,7 @@ def run_ingestion():
         content_type='application/octet-stream'
     )
 
-    # 4. Convert data to parquet to add to bronze bucket
+    # 4. Convert data to parquet and add to bronze bucket for easier querying
     df = data.to_frame(name='value').reset_index()
     df.columns = ['date', 'value']
     bronze_blob_path = f"fred/{series_id}/frequency={info['frequency_short']}/ingest_date={today}/{info['id']}-{info['last_updated']}.parquet"

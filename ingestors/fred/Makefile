@@ -20,13 +20,6 @@ liverun:
 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
 		-t $(TAG):$(VERSION) \
 		uv run main.py
-# 	docker run -it \
-# 		-v $(pwd):/app \ 
-# 		-v ${ADC}:/tmp/keys/creds.json:ro \
-#  		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
-# 		-t$(TAG):$(VERSION) \
-#  		uv run main.py
-
 
 drop:
 	docker rmi $(TAG):$(VERSION)
