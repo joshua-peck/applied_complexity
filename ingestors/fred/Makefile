@@ -9,7 +9,6 @@ run:
 	docker run -it \
 		--env-file ../../.env \
 		-v $(ADC):/tmp/keys/creds.json:ro \
-		-e BRONZE_BUCKET="appliedcomplexity-landing-zone" \
 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
 		-t $(TAG):$(VERSION) 
 
@@ -18,7 +17,6 @@ liverun:
 	docker run -it \
 		--env-file ../../.env \
 		-v $(ADC):/tmp/keys/creds.json:ro \
-		-e BRONZE_BUCKET="appliedcomplexity-landing-zone" \
 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
 		-t $(TAG):$(VERSION) \
 		uv run main.py
