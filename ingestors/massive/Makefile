@@ -5,7 +5,7 @@ RUNDATE=`date "+%Y%m%d%H%M%S"`
 
 build:
 	docker build -t$(TAG):$(VERSION) -t$(TAG):$(RUNDATE) .
-# 	docker build -t$(TAG):$(VERSION) --no-cache .
+# 	docker build -t$(TAG):$(VERSION) -t$(TAG):$(RUNDATE) --no-cache .
 
 run:
 	docker run -it \
