@@ -24,8 +24,8 @@ def massive_object_key(series_id: str, resolution: str, report_date: date):
     return object_key
 
 def gcp_blob_path(series_id: str, resolution: str, report_date: date, format: str):
-    today: str = datetime.now().date().strftime("%Y-%m-%d")
-    return f"massive/{series_id}/frequency={resolution}/ingest_date={today}/{report_date.year}-{report_date.month:02}-{report_date.day:02}{format}"
+    ingest_date: str = datetime.now().date().strftime("%Y-%m-%d")
+    return f"massive/{series_id}/frequency={resolution}/ingest_date={ingest_date}/{report_date.year}-{report_date.month:02}-{report_date.day:02}{format}"
 
 def gcp_landing_zone_upload(client: storage.Client, tmpfile: tempfile.TemporaryFile, bucket_name: str, blob_path: str):
     tmpfile.seek(0)
@@ -49,7 +49,6 @@ def run_ingestion():
 
     # prep dates for constructing download / upload paths later...
     today: date = datetime.now().date()
-    today_str: str = today.strftime("%Y-%m-%d")
     report_date_str: str = os.environ.get('REPORT_DATE', f"{today.year}-{today.month}-{today.day}")
     report_date: date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
 
