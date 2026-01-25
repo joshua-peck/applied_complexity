@@ -23,6 +23,7 @@ liverun:
 		-t $(TAG):$(VERSION) \
 		uv run main.py
 
-drop:
-	docker rmi $(TAG):$(VERSION)
-	docker images
+clean:
+	@echo "Cleaning up project images..."
+	docker rm -f $$(docker ps -aq --filter "ancestor=$(TAG)") 2>/dev/null || true
+	docker rmi -f $$(docker images -q $(TAG)) 2>/dev/null || true
