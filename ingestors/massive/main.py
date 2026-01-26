@@ -25,7 +25,9 @@ def massive_object_key(series_id: str, resolution: str, report_date: date):
 
 def gcp_blob_path(series_id: str, resolution: str, report_date: date, format: str):
     ingest_date: str = datetime.now().date().strftime("%Y-%m-%d")
-    return f"massive/{series_id}/frequency={resolution}/ingest_date={ingest_date}/{report_date.year}-{report_date.month:02}-{report_date.day:02}{format}"
+    fmt_report_date = f"{report_date.year}-{report_date.month:02}-{report_date.day:02}"
+    # landing_zone_blob_path = f"provider=fred/series={series_id}/frequency={info['frequency_short']}/issued_date={info['last_updated'][:10]}/ingest_date={today}/{info['id']}-{info['last_updated']}.csv"
+    return f"provider=massive/series={series_id}/frequency={resolution}/issued_date={fmt_report_date}/ingest_date={ingest_date}/{fmt_report_date}{format}"
 
 def gcp_landing_zone_upload(client: storage.Client, tmpfile: tempfile.TemporaryFile, bucket_name: str, blob_path: str):
     tmpfile.seek(0)

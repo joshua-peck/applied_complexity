@@ -39,7 +39,7 @@ def run_ingestion():
     info = fred.get_series_info(series_id)
 
     # 3. Write original file to landing zone without ANY modification for traceability later
-    landing_zone_blob_path = f"fred/{series_id}/frequency={info['frequency_short']}/ingest_date={today}x/{info['id']}-{info['last_updated']}.csv"
+    landing_zone_blob_path = f"provider=fred/series={series_id}/frequency={info['frequency_short']}/issued_date={info['last_updated'][:10]}/ingest_date={today}/{info['id']}-{info['last_updated']}.csv"
     bucket = storage_client.bucket(landing_zone_bucket_name)
     blob = bucket.blob(landing_zone_blob_path)
     blob.upload_from_string(
@@ -51,7 +51,7 @@ def run_ingestion():
     # 4. Convert data to parquet and add to bronze bucket for easier querying
     df = data.to_frame(name='value').reset_index()
     df.columns = ['date', 'value']
-    bronze_blob_path = f"fred/{series_id}/frequency={info['frequency_short']}/ingest_date={today}/{info['id']}-{info['last_updated']}.parquet"
+    bronze_blob_path = f"provider=fred/series={series_id}/frequency={info['frequency_short']}/issued_date={info['last_updated'][:10]}/ingest_date={today}/{info['id']}-{info['last_updated']}.parquet"
     bucket = storage_client.bucket(landing_zone_bucket_name)
     blob = bucket.blob(landing_zone_blob_path)
     blob.upload_from_string(
