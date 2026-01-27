@@ -37,6 +37,28 @@ resource "google_storage_bucket" "bronze" {
   uniform_bucket_level_access = true
   force_destroy = var.env == "dev"
 }
+# XXX: test these
+# resource "google_bigquery_dataset" "bronze_catalog" {
+#   dataset_id = "bronze_lake"
+#   project    = var.project_id
+#   location   = "US"
+# }
+
+# resource "google_bigquery_table" "bronze_ext" {
+#   project    = var.project_id
+#   dataset_id = google_bigquery_dataset.bronze_catalog.dataset_id
+#   table_id   = "bronze_ext"
+
+#   external_data_configuration {
+#     source_format = "PARQUET"
+#     autodetect    = true
+#     connection_id = google_bigquery_connection.lake_connection.name
+
+#     source_uris = [
+#       "gs://${google_storage_bucket.bronze.name}/massive/*.parquet"
+#     ]
+#   }
+# }
 
 # --- 2. BIGLAKE CONNECTION ---
 resource "google_bigquery_connection" "lake_connection" {
