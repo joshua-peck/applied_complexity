@@ -10,10 +10,15 @@ def run_ingestion():
 
     # 1. Configuration from Environment Variables
     api_key = os.environ.get('FRED_API_KEY')
+    assert api_key is not None, 'Set FRED_API_KEY in ../../.env or in environment'
     landing_zone_bucket_name = os.environ.get('LANDING_ZONE_BUCKET')
+    assert landing_zone_bucket_name is not None, 'Set LANDING_ZONE_BUCKET in ../../.env or in environment'
     bronze_bucket_name = os.environ.get('BRONZE_BUCKET')
+    assert bronze_bucket_name is not None, 'Set BRONZE_BUCKET in ../../.env or in environment'
     series_id = os.environ.get('SERIES_ID', 'STLFSI3') # Default: Stress Index
+    assert series_id is not None, 'Set SERIES_ID in ../../.env or in environment'
     resolution = os.environ.get('RESOLUTION', 'daily')
+    assert resolution is not None, 'Set RESOLUTION in ../../.env or in environment'
 
     # 2. Fetch report and report metadata
     fred = Fred(api_key=api_key)
@@ -38,7 +43,7 @@ def run_ingestion():
     # notes                        All Employees: Total Nonfarm, commonly known a...
     info = fred.get_series_info(series_id)
 
-    # 3. Write original file to landing zone without ANY modification for traceability later
+    # # 3. Write original file to landing zone without ANY modification for traceability later
     landing_zone_blob_path = f"provider=fred/series={series_id}/frequency={info['frequency_short']}/issued_date={info['last_updated'][:10]}/ingest_date={today}/{info['id']}-{info['last_updated']}.csv"
     bucket = storage_client.bucket(landing_zone_bucket_name)
     blob = bucket.blob(landing_zone_blob_path)
@@ -47,19 +52,20 @@ def run_ingestion():
         data.to_csv(), 
         content_type='application/octet-stream'
     )
+    print(f"Successfully uploaded {series_id} to {landing_zone_blob_path}")
 
     # 4. Convert data to parquet and add to bronze bucket for easier querying
     df = data.to_frame(name='value').reset_index()
     df.columns = ['date', 'value']
     bronze_blob_path = f"provider=fred/series={series_id}/frequency={info['frequency_short']}/issued_date={info['last_updated'][:10]}/ingest_date={today}/{info['id']}-{info['last_updated']}.parquet"
-    bucket = storage_client.bucket(landing_zone_bucket_name)
-    blob = bucket.blob(landing_zone_blob_path)
+    bucket = storage_client.bucket(bronze_bucket_name)
+    blob = bucket.blob(bronze_blob_path)
     blob.upload_from_string(
         df.to_parquet(index=False), 
         content_type='application/octet-stream'
     )
 
-    print(f"Successfully uploaded {series_id} to {blob_path}")
+    print(f"Successfully uploaded {series_id} to {bronze_blob_path}")
 
 if __name__ == "__main__":
     run_ingestion()

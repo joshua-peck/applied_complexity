@@ -56,11 +56,17 @@ def run_ingestion():
 
     # Fetch keys and initialize S3 connection
     landing_zone_bucket_name: str = os.environ.get('LANDING_ZONE_BUCKET')
+    assert landing_zone_bucket_name is not None, 'Set LANDING_ZONE_BUCKET in ../../.env or in environment'
     bronze_bucket_name: str = os.environ.get('BRONZE_BUCKET')
+    assert bronze_bucket_name is not None, 'Set BRONZE_BUCKET in ../../.env or in environment'
     aws_access_key_id: str = os.environ.get('MASSIVE_ACCESS_KEY_ID')
+    assert aws_access_key_id is not None, 'Set MASSIVE_ACCESS_KEY_ID in ../../.env or in environment'
     aws_secret_access_key: str = os.environ.get('MASSIVE_SECRET_ACCESS_KEY')
+    assert aws_secret_access_key is not None, 'Set MASSIVE_SECRET_ACCESS_KEY in ../../.env or in environment'
     series_id: str = os.environ.get('SERIES_ID', 'us_stocks_sip')
+    assert series_id is not None, 'Set SERIES_ID in ../../.env or in environment'
     resolution: str = os.environ.get('RESOLUTION', 'daily')
+    assert resolution is not None, 'Set RESOLUTION in ../../.env or in environment'
     
     # Initialize a session using your credentials
     session = boto3.Session(
