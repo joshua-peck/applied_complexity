@@ -37,17 +37,42 @@ resource "google_storage_bucket" "bronze" {
   uniform_bucket_level_access = true
   force_destroy = var.env == "dev"
 }
-# XXX: test these
-# resource "google_bigquery_dataset" "bronze_catalog" {
-#   dataset_id = "bronze_lake"
-#   project    = var.project_id
-#   location   = "US"
-# }
 
-# resource "google_bigquery_table" "bronze_ext" {
+# --- 2. BIGLAKE CONNECTION ---
+resource "google_bigquery_connection" "lake_connection" {
+  connection_id = "medallion-bridge"
+  location      = "US"
+  cloud_resource {}
+}
+
+resource "google_bigquery_dataset" "bronze_catalog" {
+  dataset_id = "bronze_lake"
+  project    = var.project_id
+  location   = "US"
+}
+
+# Create local vars to query providers interchangeably
+variable "data_providers" {
+  type    = set(string)
+  default = ["fred", "massive"]
+}
+
+# Expected format:
+# gs://<project>-bronze/
+#   provider=massive/
+#     series=TSLA/
+#       frequency=Daily/
+#         issued_date=2026-01-09/
+#           ingest_date=2026-01-22/
+#             2026-01-09.parquet
+# XXX: Think about whether we want to keep adding external tables per provider or try to standardize
+#.     the providers data formats to make querying interchangeable
+# XXX: Consider switching frequency and series to potentially make querying easier
+# TODO: Standardize frequency strings between providers
+# resource "google_bigquery_table" "bronze_massive_ext" {
 #   project    = var.project_id
 #   dataset_id = google_bigquery_dataset.bronze_catalog.dataset_id
-#   table_id   = "bronze_ext"
+#   table_id   = "bronze_massive_ext"
 
 #   external_data_configuration {
 #     source_format = "PARQUET"
@@ -55,16 +80,37 @@ resource "google_storage_bucket" "bronze" {
 #     connection_id = google_bigquery_connection.lake_connection.name
 
 #     source_uris = [
-#       "gs://${google_storage_bucket.bronze.name}/massive/*.parquet"
+#       "gs://${google_storage_bucket.bronze.name}/provider=massive/*"
 #     ]
+
+#     hive_partitioning_options {
+#       mode                    = "AUTO"
+#       source_uri_prefix        = "gs://${google_storage_bucket.bronze.name}/provider=massive/"
+#       require_partition_filter = true
+#     }
 #   }
 # }
+resource "google_bigquery_table" "bronze_provider_ext" {
+  for_each  = var.data_providers
+  project   = var.project_id
+  dataset_id = google_bigquery_dataset.bronze_catalog.dataset_id
+  table_id  = "bronze_${each.key}_ext"
 
-# --- 2. BIGLAKE CONNECTION ---
-resource "google_bigquery_connection" "lake_connection" {
-  connection_id = "medallion-bridge"
-  location      = "US"
-  cloud_resource {}
+  external_data_configuration {
+    source_format = "PARQUET"
+    autodetect    = true
+    connection_id = google_bigquery_connection.lake_connection.name
+
+    source_uris = [
+      "gs://${google_storage_bucket.bronze.name}/provider=${each.key}/*"
+    ]
+
+    hive_partitioning_options {
+      mode                    = "AUTO"
+      source_uri_prefix        = "gs://${google_storage_bucket.bronze.name}/provider=${each.key}/"
+      require_partition_filter = true
+    }
+  }
 }
 
 # --- 3. NETWORK: Private VPC for Postgres
