@@ -53,6 +53,7 @@ def run_ingestion():
     today: date = datetime.now().date()
     report_date_str: str = os.environ.get('REPORT_DATE', f"{today.year}-{today.month}-{today.day}")
     report_date: date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
+    logging.info(f"Report date = {report_date_str}, {report_date}")
 
     # Fetch keys and initialize S3 connection
     landing_zone_bucket_name: str = os.environ.get('LANDING_ZONE_BUCKET')
@@ -85,10 +86,10 @@ def run_ingestion():
         try:
             s3.download_fileobj(SOURCE_BUCKET_NAME, source_object_key, tmpfile)
             logging.info(f"Massive source file downloaded: {SOURCE_BUCKET_NAME}/{source_object_key}")
-            landing_zone_blob_path = gcp_blob_path(series_id, resolution, today, '.csv.gz')
+            landing_zone_blob_path = gcp_blob_path(series_id, resolution, report_date, '.csv.gz')
             gcp_landing_zone_upload(storage_client, tmpfile, landing_zone_bucket_name, landing_zone_blob_path)
             logging.info(f"Landing Zone file uploaded: {landing_zone_bucket_name}/{landing_zone_blob_path}")
-            bronze_blob_path = gcp_blob_path(series_id, resolution, today, '.parquet')
+            bronze_blob_path = gcp_blob_path(series_id, resolution, report_date, '.parquet')
             gcp_bronze_upload(storage_client, tmpfile, bronze_bucket_name, bronze_blob_path)
             logging.info(f"Bronze file uploaded: {bronze_bucket_name}/{bronze_blob_path}")
         except Exception as e:
