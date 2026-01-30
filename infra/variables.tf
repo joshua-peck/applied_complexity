@@ -1,6 +1,14 @@
-variable "project_id" { type = string }
+variable "project_id" { 
+  type = string
+  default = "macrocontext"
+  description = "name of the GCP project"
+}
 variable "region"     { default = "us-central1" }
-variable "env"        { type = string } # dev, staging, or prod
+variable "env"        { 
+  type = string
+  description = "gcp cloud environment to deploy to: dev, staging, prod"
+  default = "dev"
+}
 variable "developer_email" {
   type        = string
   description = "email for primary dev account running remotely"

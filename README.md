@@ -10,14 +10,14 @@ From `infra/modules/medallion_core`
 
     # Inspect the changes before deploying
     $ terraform plan \
-      -var="appliedcomplexity" \
+      -var="macrocontext" \
       -var="env=dev"
 
     # Deploy the changes
     $ terraform apply \
-      -var="appliedcomplexity" \
+      -var="macrocontext" \
       -var="env=dev"
 
 # MANAGE SECRETS
     $ echo -n "YOUR_ACTUAL_FRED_API_KEY" | \
-      gcloud secrets versions add FRED_API_KEY --data-file=- --project appliedcomplexity
+      gcloud secrets versions add FRED_API_KEY --data-file=- --project macrocontext

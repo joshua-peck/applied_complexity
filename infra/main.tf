@@ -1,4 +1,3 @@
-
 provider "google" {
   project = var.project_id
   region  = var.region
@@ -13,7 +12,7 @@ resource "google_storage_bucket" "landing_zone" {
 
   # IMMUTABILITY: Prevent deletion/overwrites for 5 years
   retention_policy {
-    is_locked        = true
+    is_locked        = var.env == "prod" ? true : false
     retention_period = 157680000 # 5 years in seconds
   }
 
@@ -29,9 +28,17 @@ resource "google_storage_bucket" "landing_zone" {
   }
 }
 
-# --- 1. BRONZE LAYER (GCS) ---
+# --- 1. BRONZE/SILVER LAYER (GCS) ---
 resource "google_storage_bucket" "bronze" {
   name     = "${var.project_id}-bronze"
+  location = "US"
+  versioning { enabled = true }
+  uniform_bucket_level_access = true
+  force_destroy = var.env == "dev"
+}
+
+resource "google_storage_bucket" "silver" {
+  name     = "${var.project_id}-silver"
   location = "US"
   versioning { enabled = true }
   uniform_bucket_level_access = true
@@ -65,31 +72,7 @@ variable "data_providers" {
 #         issued_date=2026-01-09/
 #           ingest_date=2026-01-22/
 #             2026-01-09.parquet
-# XXX: Think about whether we want to keep adding external tables per provider or try to standardize
-#.     the providers data formats to make querying interchangeable
-# XXX: Consider switching frequency and series to potentially make querying easier
 # TODO: Standardize frequency strings between providers
-# resource "google_bigquery_table" "bronze_massive_ext" {
-#   project    = var.project_id
-#   dataset_id = google_bigquery_dataset.bronze_catalog.dataset_id
-#   table_id   = "bronze_massive_ext"
-
-#   external_data_configuration {
-#     source_format = "PARQUET"
-#     autodetect    = true
-#     connection_id = google_bigquery_connection.lake_connection.name
-
-#     source_uris = [
-#       "gs://${google_storage_bucket.bronze.name}/provider=massive/*"
-#     ]
-
-#     hive_partitioning_options {
-#       mode                    = "AUTO"
-#       source_uri_prefix        = "gs://${google_storage_bucket.bronze.name}/provider=massive/"
-#       require_partition_filter = true
-#     }
-#   }
-# }
 resource "google_bigquery_table" "bronze_provider_ext" {
   for_each  = var.data_providers
   project   = var.project_id
@@ -132,9 +115,9 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
-# --- 4. SILVER/GOLD LAYER: Managed PostgreSQL
-resource "google_sql_database_instance" "appliedcomplexity-db" {
-  name             = "appliedcomplexity-${var.env}"
+# --- 4. GOLD LAYER: Managed PostgreSQL
+resource "google_sql_database_instance" "macrocontext-db" {
+  name             = "macrocontext-${var.env}"
   database_version = "POSTGRES_15"
   depends_on       = [google_service_networking_connection.private_vpc_connection]
 
@@ -150,7 +133,7 @@ resource "google_sql_database_instance" "appliedcomplexity-db" {
 # --- 5. SQL LEDGER: The Provenance Anchor
 resource "google_sql_database" "provenance_db" {
   name     = "provenance_ledger"
-  instance = google_sql_database_instance.appliedcomplexity-db.name
+  instance = google_sql_database_instance.macrocontext-db.name
 }
 
 ## Grant BigLake permission to read Bronze
@@ -180,4 +163,3 @@ resource "google_project_iam_member" "mac_sql_client" {
   role    = "roles/cloudsql.client"
   member  = "user:${var.developer_email}"
 }
-

@@ -1,6 +1,6 @@
  terraform {
   backend "gcs" {
-    bucket = "appliedcomplexity-tfstate"
+    bucket = "macrocontext-tfstate"
     prefix = "terraform/state"
   }
 }
