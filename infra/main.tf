@@ -10,10 +10,14 @@ resource "google_storage_bucket" "landing_zone" {
   storage_class               = "STANDARD" # Start standard, move to archive via lifecycle
   uniform_bucket_level_access = true
 
-  # IMMUTABILITY: Prevent deletion/overwrites for 5 years
-  retention_policy {
-    is_locked        = var.env == "prod" ? true : false
-    retention_period = 157680000 # 5 years in seconds
+  # IMMUTABILITY: Prevent deletion/overwrites for 5 years in prod only
+  dynamic "retention_policy" {
+    # If prod, create a list with 1 element; if not, create an empty list []
+    for_each = var.env == "prod" ? [1] : []
+    content {
+      is_locked        = false # Caution: setting to true makes removal irreversible
+      retention_period = 157680000 # 5 years in seconds in prod
+    }
   }
 
   # ARCHIVAL: Move to Archive class after 30 days to save costs
