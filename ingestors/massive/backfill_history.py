@@ -4,8 +4,9 @@ import argparse
 import logging
 import sys
 import os
+import pathlib
 
-ADC = '/Users/jmp/.config/gcloud/application_default_credentials.json'
+ADC = str(pathlib.Path('~/.config/gcloud/application_default_credentials.json').expanduser())
 TAG = 'massive_ingestor'
 VERSION = 'latest'
 
@@ -15,37 +16,27 @@ def run(rundate: str):
     "--env-file", "../../.env", 
     "-v", f"{ADC}:/tmp/keys/creds.json:ro", 
     "-e", "GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json", 
+    "-e", f"REPORT_DATE={rundate}",
     "-t", f"{TAG}:{VERSION}" 
   ]
   result = subprocess.Popen(
     cmd,
-    env=os.environ | {"REPORT_DATE": rundate},
     stdout=subprocess.PIPE, 
     stderr=subprocess.STDOUT, 
     text=True,
+    universal_newlines=True,
     bufsize=1 # Line buffering
   )
-  while True:
-    line = result.stdout.readline()
-    if not line:
-      break
-    sys.stdout.write(line)
-    sys.stdout.flush() # Ensure it prints immediately
-  #   print(result.stdout)
-  #   if result.stderr:
-  #     print("Error:", result.stderr)
-  # except subprocess.CalledProcessError as e:
-  #   print(f"Command failed with return code {e.returncode}")
-  #   print("STDOUT:", result.stdout)
-  #   print("STDERR:", result.stderr)
-  # except FileNotFoundError:
-  #   print("Command not found. Check your command name and path.")
+  stdout, stderr = result.communicate()
+  logging.info(f"Stdout: {stdout}")
+  if stderr is not None:
+    logging.info(f"Stderr: {stderr}")
 
 if __name__ == "__main__":
   logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
   parser = argparse.ArgumentParser(description="Backfill data history by running docker image")
-  parser.add_argument("--start", type=datetime.date, required=False, help="Start date (YYYY-MM-DD)")
-  parser.add_argument("--end", type=datetime.date, required=False, help="End date (YYYY-MM-DD)")
+  parser.add_argument("--start", type=lambda d: datetime.strptime(d, '%Y-%m-%d').date(), required=False, help="Start date (YYYY-MM-DD)")
+  parser.add_argument("--end", type=lambda d: datetime.strptime(d, '%Y-%m-%d').date(), required=False, help="End date (YYYY-MM-DD)")
   parser.add_argument("--days-ago", type=int, required=False, help="run for the date = today - DAYS_AGO")
   args = parser.parse_args()
 
@@ -53,70 +44,10 @@ if __name__ == "__main__":
     report_date = (datetime.today() - timedelta(days=args.days_ago)).date()
     logging.info(f"Running for: {report_date}")
     run(report_date.strftime("%Y-%m-%d"))
-
-
-
-
-
-
-# process for n days ago, usually n = 1 to process yesterday's updates
-# try:
-#     result = subprocess.run(
-#         ["ls", "-l"],
-#         capture_output=True,
-#         text=True,
-#         check=True # Raise an exception if the command fails
-#     )
-#     print(result.stdout)
-#     if result.stderr:
-#         print("Error:", result.stderr)
-# except subprocess.CalledProcessError as e:
-#     print(f"Command failed with return code {e.returncode}")
-# except FileNotFoundError:
-#     print("Command not found. Check your command name and path.")
-
-  # docker run -it \
-  #     --env-file ../../.env \
-  #     -v $(ADC):/tmp/keys/creds.json:ro \
-  #     -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
-  #     -t $(TAG):$(VERSION) 
-    
-
-
-# parser.print_help()
-
-
-# start = datetime.strptime("2023-10-01", "%Y-%m-%d")
-# end = datetime.strptime("2023-10-05", "%Y-%m-%d")
-
-# current = start
-# while current <= end:
-#     print(current.strftime("%Y-%m-%d"))
-#     current += timedelta(days=1)
-
-
-    
-
-# try:
-#     result = subprocess.run(
-#         ["ls", "-l"],
-#         capture_output=True,
-#         text=True,
-#         check=True # Raise an exception if the command fails
-#     )
-#     print(result.stdout)
-#     if result.stderr:
-#         print("Error:", result.stderr)
-# except subprocess.CalledProcessError as e:
-#     print(f"Command failed with return code {e.returncode}")
-# except FileNotFoundError:
-#     print("Command not found. Check your command name and path.")
-
-
-# # run_long_task(["make", "build"])
-
-# # docker run -it \
-# # 		--env-file ../../.env \
-# # 		-v $(ADC):/tmp/keys/creds.json:ro \
-# # 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
-# # 		-t $(TAG):$(VERSION) 
+  if args.start is not None and args.end is not None:
+    delta = timedelta(days=1)
+    current_date = args.start
+    while current_date < args.end:
+      logging.info(f"Running for: {current_date}")
+      run(current_date)
+      current_date = current_date + delta

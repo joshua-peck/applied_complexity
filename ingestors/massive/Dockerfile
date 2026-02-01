@@ -28,7 +28,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Set parameters for this run
 ENV SERIES_ID=us_stocks_sip
-ENV REPORT_DATE=2026-01-21
+# ENV REPORT_DATE=2026-01-21
 
 # Copy your ingestion script
 COPY main.py .

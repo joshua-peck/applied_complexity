@@ -3,6 +3,7 @@ import tempfile
 from datetime import date, datetime
 from typing import BinaryIO
 import logging
+from pprint import pprint
 import boto3
 import botocore
 from google.cloud import storage
@@ -53,7 +54,7 @@ def run_ingestion():
     today: date = datetime.now().date()
     report_date_str: str = os.environ.get('REPORT_DATE', f"{today.year}-{today.month}-{today.day}")
     report_date: date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
-    logging.info(f"Report date = {report_date_str}, {report_date}")
+    logging.info(f"Report date str = {report_date_str}, report_date = {report_date}")
 
     # Fetch keys and initialize S3 connection
     landing_zone_bucket_name: str = os.environ.get('LANDING_ZONE_BUCKET')
