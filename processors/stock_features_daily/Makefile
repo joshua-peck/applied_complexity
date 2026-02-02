@@ -1,0 +1,29 @@
+ADC=~/.config/gcloud/application_default_credentials.json
+TAG=process_stock_features_daily
+VERSION=latest
+RUNDATE=`date "+%Y%m%d%H%M%S"`
+
+build:
+	docker build -t$(TAG):$(VERSION) -t$(TAG):$(RUNDATE) .
+# 	docker build -t$(TAG):$(VERSION) -t$(TAG):$(RUNDATE) --no-cache .
+
+run:
+	docker run -it \
+		--env-file ../../.env \
+		-v $(ADC):/tmp/keys/creds.json:ro \
+		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+		-t $(TAG):$(VERSION) 
+
+
+liverun:
+	docker run -it \
+		--env-file ../../.env \
+		-v $(ADC):/tmp/keys/creds.json:ro \
+		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+		-t $(TAG):$(VERSION) \
+		uv run main.py
+
+clean:
+	@echo "Cleaning up project images..."
+	docker rm -f $$(docker ps -aq --filter "ancestor=$(TAG)") 2>/dev/null || true
+	docker rmi -f $$(docker images -q $(TAG)) 2>/dev/null || true
