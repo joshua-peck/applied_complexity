@@ -27,3 +27,7 @@ clean:
 	@echo "Cleaning up project images..."
 	docker rm -f $$(docker ps -aq --filter "ancestor=$(TAG)") 2>/dev/null || true
 	docker rmi -f $$(docker images -q $(TAG)) 2>/dev/null || true
+	
+auth:
+	gcloud auth login
+	gcloud auth application-default login

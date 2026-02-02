@@ -159,6 +159,21 @@ wheels = [
 ]
 
 [[package]]
+name = "db-dtypes"
+version = "1.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ce/75/7cbd2af9f3bed29c74df4c6512243b94e0dc17ca03bf82a33e45ee75501b/db_dtypes-1.4.4.tar.gz", hash = "sha256:26f53db5df1acd746b88c5647913a1b20f731c0af1b11abcb6bec5365f31098a", size = 34471, upload-time = "2025-11-11T17:21:59.221Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/46/398af286861992d98f5ca7e1b4662b5d6f1d29978ddc0849c52fb130e8e9/db_dtypes-1.4.4-py3-none-any.whl", hash = "sha256:32c13039982656a8598a0835f25f0e07e34c9a423e471ee60c2553240b7fcf1e", size = 18255, upload-time = "2025-11-11T17:21:57.93Z" },
+]
+
+[[package]]
 name = "google-api-core"
 version = "2.29.0"
 source = { registry = "https://pypi.org/simple" }
@@ -210,6 +225,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/94/0a/62438ca138a095945468968696d9cca75a4cfd059e810402e70b0236d8ba/google_cloud_bigquery-3.40.0.tar.gz", hash = "sha256:b3ccb11caf0029f15b29569518f667553fe08f6f1459b959020c83fbbd8f2e68", size = 509287, upload-time = "2026-01-08T01:07:26.065Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/90/6a/90a04270dd60cc70259b73744f6e610ae9a158b21ab50fb695cca0056a3d/google_cloud_bigquery-3.40.0-py3-none-any.whl", hash = "sha256:0469bcf9e3dad3cab65b67cce98180c8c0aacf3253d47f0f8e976f299b49b5ab", size = 261335, upload-time = "2026-01-08T01:07:23.761Z" },
+]
+
+[[package]]
+name = "google-cloud-bigquery-storage"
+version = "2.36.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpcio" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cf/72/b5dbf3487ea320a87c6d1ba8bb7680fafdb3147343a06d928b4209abcdba/google_cloud_bigquery_storage-2.36.0.tar.gz", hash = "sha256:d3c1ce9d2d3a4d7116259889dcbe3c7c70506f71f6ce6bbe54aa0a68bbba8f8f", size = 306959, upload-time = "2025-12-18T18:01:45.916Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/50/70e4bc2d52b52145b6e70008fbf806cef850e809dd3e30b4493d91c069ea/google_cloud_bigquery_storage-2.36.0-py3-none-any.whl", hash = "sha256:1769e568070db672302771d2aec18341de10712aa9c4a8c549f417503e0149f0", size = 303731, upload-time = "2025-12-18T18:01:44.598Z" },
 ]
 
 [[package]]
@@ -587,7 +618,9 @@ name = "stock-features-daily"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "db-dtypes" },
     { name = "google-cloud-bigquery" },
+    { name = "google-cloud-bigquery-storage" },
     { name = "google-cloud-storage" },
     { name = "pandas" },
     { name = "pyarrow" },
@@ -595,7 +628,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "db-dtypes", specifier = ">=1.4.4" },
     { name = "google-cloud-bigquery", specifier = ">=3.40.0" },
+    { name = "google-cloud-bigquery-storage", specifier = ">=2.36.0" },
     { name = "google-cloud-storage", specifier = ">=3.8.0" },
     { name = "pandas", specifier = ">=3.0.0" },
     { name = "pyarrow", specifier = ">=23.0.0" },
