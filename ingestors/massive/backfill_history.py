@@ -2,8 +2,6 @@ import subprocess
 from datetime import datetime, date, timedelta
 import argparse
 import logging
-import sys
-import os
 import pathlib
 
 ADC = str(pathlib.Path('~/.config/gcloud/application_default_credentials.json').expanduser())
