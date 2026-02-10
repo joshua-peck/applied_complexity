@@ -1,5 +1,6 @@
 import os
 from datetime import date, timedelta
+import logging
 
 import pandas as pd
 import pyarrow as pa
@@ -7,10 +8,12 @@ import pyarrow.parquet as pq
 import gcsfs
 from google.cloud import bigquery
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # -- 0. Config via env
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", 'macrocontext')
 SILVER_DATA_LAKE = os.getenv("SILVER_DATA_LAKE", 'silver_lake')
-SILVER_BQ_TABLE = os.getenv("SILVER_BQ_TABLE", 'silver_massive_ext')
+SILVER_BQ_TABLE = os.getenv("SILVER_BQ_TABLE", 'silver_us_stocks_sip_ext')
 SILVER_BUCKET = os.getenv("SILVER_BUCKET", f"{PROJECT_ID}-silver")
 
 SYMBOL_GOLD = os.getenv("SYMBOL_GOLD", "GLD")
@@ -22,35 +25,36 @@ CLOSE_COL = os.getenv("CLOSE_COL", "close")
 
 LOOKBACK_DAYS = int(os.getenv("LOOKBACK_DAYS", "420"))
 
-# # -- 1. Pull data
-# def pull_daily_prices(end_dt: date) -> pd.DataFrame:
-#     start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
-#     bq = bigquery.Client(project=PROJECT_ID)
+# -- 1. Pull data
+def pull_daily_prices(end_dt: date) -> pd.DataFrame:
+    start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
+    bq = bigquery.Client(project=PROJECT_ID)
 
-#     sql = f"""
-#     SELECT
-#       {SYMBOL_COL} AS symbol,
-#       SAFE_CAST({DT_COL} AS DATE) AS dt,
-#       SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
-#     FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_TABLE}`
-#     WHERE {SYMBOL_COL} IN UNNEST(@symbols)
-#       AND SAFE_CAST({DT_COL} AS DATE) BETWEEN @start_dt AND @end_dt
-#       AND {CLOSE_COL} IS NOT NULL
-#     ORDER BY dt, symbol
-#     """
+    sql = f"""
+    SELECT
+      {SYMBOL_COL} AS symbol,
+      SAFE_CAST({DT_COL} AS DATE) AS dt,
+      SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
+    FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_TABLE}`
+    WHERE {SYMBOL_COL} IN UNNEST(@symbols)
+      AND frequency IN ('daily', 'Daily')
+      AND SAFE_CAST({DT_COL} AS DATE) BETWEEN @start_dt AND @end_dt
+      AND {CLOSE_COL} IS NOT NULL
+    ORDER BY dt, symbol
+    """
 
-#     job_config = bigquery.QueryJobConfig(
-#         query_parameters=[
-#             bigquery.ArrayQueryParameter("symbols", "STRING", [SYMBOL_SPX, SYMBOL_GOLD]),
-#             bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
-#             bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
-#         ]
-#     )
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ArrayQueryParameter("symbols", "STRING", [SYMBOL_SPX, SYMBOL_GOLD]),
+            bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
+            bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
+        ]
+    )
 
-#     df = bq.query(sql, job_config=job_config).to_dataframe()
-#     if df.empty:
-#         raise SystemExit("No rows returned from Silver. Check SILVER_BQ_TABLE / columns / symbols / dates.")
-#     return df
+    df = bq.query(sql, job_config=job_config).to_dataframe()
+    if df.empty:
+        raise SystemExit("No rows returned from Silver. Check SILVER_BQ_TABLE / columns / symbols / dates.")
+    return df
 
 
 # # -- 2. Calculate indicator series
@@ -112,9 +116,10 @@ LOOKBACK_DAYS = int(os.getenv("LOOKBACK_DAYS", "420"))
 #     # descriptive filename, one file per day
 #     fname = f"gold_to_spx_{dt.isoformat()}.parquet"
 #     return (
-#         f"gs://{SILVER_BUCKET}/indicators/"
+#         f"gs://{SILVER_BUCKET}/"
 #         f"indicator=gold_to_spx/"
-#         f"dt={dt.isoformat()}/"
+#         f"frequency=daily/"
+#         f"as_of={dt.isoformat()}/"
 #         f"{fname}"
 #     )
 
@@ -139,6 +144,7 @@ LOOKBACK_DAYS = int(os.getenv("LOOKBACK_DAYS", "420"))
 
 if __name__ == "__main__":
     end_dt = date.today()
-    # raw = pull_daily_prices(end_dt=end_dt)
+    raw = pull_daily_prices(end_dt=end_dt)
+    logging.info(raw)
     # indicator_df = calculate_gold_to_spx(raw)
     # write_indicator(indicator_df, dt=end_dt)
