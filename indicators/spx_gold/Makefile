@@ -1,5 +1,5 @@
 ADC=~/.config/gcloud/application_default_credentials.json
-TAG=indicator_spx_gold_daily
+TAG=indicator_spx_gold
 VERSION=latest
 RUNDATE=`date "+%Y%m%d%H%M%S"`
 
