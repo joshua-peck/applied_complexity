@@ -1,5 +1,5 @@
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import logging
 
 import pandas as pd
@@ -11,6 +11,10 @@ from google.cloud import bigquery
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # -- 0. Config via env
+today: date = datetime.now().date()
+report_date_str: str = os.environ.get('REPORT_DATE', f"{today.year}-{today.month}-{today.day}")
+report_date: date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
+
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", 'macrocontext')
 SILVER_DATA_LAKE = os.getenv("SILVER_DATA_LAKE", 'silver_lake')
 SILVER_BQ_TABLE = os.getenv("SILVER_BQ_TABLE", 'silver_us_stocks_sip_ext')
@@ -119,9 +123,9 @@ def gcs_output_path(dt: date) -> str:
         f"{fname}"
     )
 
-
 def write_indicator(df: pd.DataFrame, dt: date) -> None:
     # write exactly one row for that day
+    print(df)
     day = df[df["dt"] == dt].copy()
     if day.empty:
         raise SystemExit(f"No computed indicator row for dt={dt.isoformat()} (not enough history or missing prices).")
@@ -139,7 +143,7 @@ def write_indicator(df: pd.DataFrame, dt: date) -> None:
 
 
 if __name__ == "__main__":
-    end_dt = date.today()
+    end_dt = report_date
     raw = pull_daily_prices(end_dt=end_dt)
     indicator_df = calculate_gold_to_spx(raw)
     write_indicator(indicator_df, dt=end_dt)

@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
+# ENV REPORT_DATE=2026-02-06
 
 # Set parameters for this run
 ENV SERIES_ID=us_stocks_sip
