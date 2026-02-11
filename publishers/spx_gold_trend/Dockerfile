@@ -30,6 +30,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV SERIES_ID=us_stocks_sip
 
 # Copy your ingestion script
-COPY stock_features_daily.py .
+COPY spx_gold_trend.py .
 
-CMD ["python", "stock_features_daily.py"]
+CMD ["python", "spx_gold_trend.py"]

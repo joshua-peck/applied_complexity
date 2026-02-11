@@ -1,7 +1,8 @@
 ADC=~/.config/gcloud/application_default_credentials.json
-TAG=process_stock_features_daily
+TAG=spx_gold_trend
 VERSION=latest
 RUNDATE=`date "+%Y%m%d%H%M%S"`
+REPORT_DATE=2026-02-06
 
 build:
 	docker build -t$(TAG):$(VERSION) -t$(TAG):$(RUNDATE) .
@@ -12,6 +13,7 @@ run:
 		--env-file ../../.env \
 		-v $(ADC):/tmp/keys/creds.json:ro \
 		-e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json \
+		-e REPORT_DATE=$(REPORT_DATE) \
 		-t $(TAG):$(VERSION) 
 
 
