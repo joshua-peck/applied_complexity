@@ -99,44 +99,33 @@ def read_indicator(report_date: str) -> pd.DataFrame:
     return df
 
 # # 2) Calculate / reshape into the gold row format
-# def make_gold_row(indicator_df: pd.DataFrame) -> pd.DataFrame:
-#     # We expect columns from your indicator writer:
-#     # dt, trend, gold_close, spx_close, value, inverse_value
-#     # plus other fields (sma_50, sma_200, etc.) that we ignore.
-#     required = {"dt", "trend", "gold_close", "spx_close", "value", "inverse_value"}
-#     missing = required - set(indicator_df.columns)
-#     if missing:
-#         raise SystemExit(f"Indicator parquet missing required columns: {sorted(missing)}")
+def make_gold_row(indicator_df: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "dt", 
+        "indicator", 
+        "trend", 
+        "gold_close", 
+        "spx_close", 
+        "gold_to_spx_ratio", 
+        "spx_to_gold_ratio", 
+        "sma_50", 
+        "sma_200"
+    }
+    assert required == set(indicator_df.columns), f"`indicator_df` missing required columns: {sorted(required - set(indicator_df.columns))}"
 
-#     out = indicator_df.copy()
+    # Coerce types
+    out = indicator_df[list(required)].copy()
+    out["dt"] = pd.to_datetime(out["dt"]).dt.date
+    for c in ['trend', 'indicator']:
+        out[c] = out[c].astype(str)
+    for c in ["spx_close", "gold_close", "gold_to_spx_ratio", "spx_to_gold_ratio", 'sma_50', 'sma_200']:
+        out[c] = pd.to_numeric(out[c], errors="coerce")
+    # keep it strict for a daily gold table
+    if out.isna().any(axis=None):
+        raise SystemExit("Computed gold row has nulls after type coercion. Check upstream indicator data.")
 
-#     out = out.rename(columns={
-#         "value": "gold_to_spx_ratio",
-#         "inverse_value": "spx_to_gold_ratio",
-#     })
-
-#     # Select exactly what you want for Metabase charting
-#     out = out[[
-#         "dt",
-#         "trend",
-#         "spx_close",
-#         "gold_close",
-#         "gold_to_spx_ratio",
-#         "spx_to_gold_ratio",
-#     ]].copy()
-
-#     # Coerce types
-#     out["dt"] = pd.to_datetime(out["dt"]).dt.date
-#     out["trend"] = out["trend"].astype(str)
-#     for c in ["spx_close", "gold_close", "gold_to_spx_ratio", "spx_to_gold_ratio"]:
-#         out[c] = pd.to_numeric(out[c], errors="coerce")
-
-#     if out.isna().any(axis=None):
-#         # keep it strict for a daily gold table
-#         raise SystemExit("Computed gold row has nulls after type coercion. Check upstream indicator data.")
-
-#     # Ensure exactly one row
-#     return out.tail(1)
+    # Ensure exactly one row
+    return out.tail(1)
 
 
 # # 3) Upsert into Postgres Gold
@@ -191,7 +180,8 @@ if __name__ == "__main__":
     conn = get_db_connection()
     logging.info(f"Connected to database: {conn.dsn}")
     ind = read_indicator(REPORT_DATE)
-    logging.info(ind)
-    # gold_row = make_gold_row(ind)
+    logging.info(f"\n{ind}")
+    gold_row = make_gold_row(ind)
+    logging.info(f"\n{gold_row}")
     # upsert_gold(gold_row)
     # print(f"Upserted {GOLD_TABLE} for dt={REPORT_DATE}")
