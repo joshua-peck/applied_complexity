@@ -28,7 +28,7 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", 'macrocontext')
 # SILVER_BUCKET = os.getenv("SILVER_BUCKET", f"{PROJECT_ID}-silver")
 INDICATOR_ID = os.getenv("INDICATOR_ID", "gold_to_spx")
 REPORT_DATE = get_report_date()
-GOLD_TABLE = os.getenv("GOLD_TABLE", "gold.stock_signals_daily")
+GOLD_TABLE = os.getenv("GOLD_TABLE", "gold.spx_gold_trend")
 REGION = os.getenv("REGION", "us-central1")
 SILVER_DATA_LAKE = os.getenv("SILVER_DATA_LAKE", 'silver_lake')
 SILVER_BQ_INDICATOR_TABLE = os.getenv("SILVER_BQ_INDICATOR_TABLE", 'silver_gold_to_spx_ext')
@@ -129,51 +129,55 @@ def make_gold_row(indicator_df: pd.DataFrame) -> pd.DataFrame:
 
 
 # # 3) Upsert into Postgres Gold
-# def upsert_gold(df: pd.DataFrame) -> None:
-#     schema, _ = GOLD_TABLE.split(".", 1)
+def upsert_gold(conn: psycopg2.connection, df: pd.DataFrame) -> None:
+    schema, _ = GOLD_TABLE.split(".", 1)
+    create_sql = f"""
+    CREATE SCHEMA IF NOT EXISTS {schema};
+    CREATE TABLE IF NOT EXISTS {GOLD_TABLE} (
+      dt DATE PRIMARY KEY,
+      indicator TEXT NOT NULL,
+      trend TEXT NOT NULL,
+      spx_close DOUBLE PRECISION NOT NULL,
+      gold_close DOUBLE PRECISION NOT NULL,
+      gold_to_spx_ratio DOUBLE PRECISION NOT NULL,
+      spx_to_gold_ratio DOUBLE PRECISION NOT NULL,
+      sma_50 DOUBLE PRECISION NOT NULL,
+      sma_200 DOUBLE PRECISION NOT NULL
+    );
+    """
 
-#     create_sql = f"""
-#     CREATE SCHEMA IF NOT EXISTS {schema};
-#     CREATE TABLE IF NOT EXISTS {GOLD_TABLE} (
-#       dt DATE PRIMARY KEY,
-#       trend TEXT NOT NULL,
-#       spx_close DOUBLE PRECISION NOT NULL,
-#       gold_close DOUBLE PRECISION NOT NULL,
-#       gold_to_spx_ratio DOUBLE PRECISION NOT NULL,
-#       spx_to_gold_ratio DOUBLE PRECISION NOT NULL
-#     );
-#     """
+    upsert_sql = f"""
+    INSERT INTO {GOLD_TABLE} (
+      dt, indicator, trend, spx_close, gold_close, gold_to_spx_ratio, spx_to_gold_ratio, sma_50, sma_200
+    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    ON CONFLICT (dt) DO UPDATE SET
+      indicator = EXCLUDED.indicator,
+      trend = EXCLUDED.trend,
+      spx_close = EXCLUDED.spx_close,
+      gold_close = EXCLUDED.gold_close,
+      gold_to_spx_ratio = EXCLUDED.gold_to_spx_ratio,
+      spx_to_gold_ratio = EXCLUDED.spx_to_gold_ratio,
+      sma_50 = EXCLUDED.sma_50,
+      sma_200 = EXCLUDED.sma_200;
+    """
 
-#     upsert_sql = f"""
-#     INSERT INTO {GOLD_TABLE} (
-#       dt, trend, spx_close, gold_close, gold_to_spx_ratio, spx_to_gold_ratio
-#     ) VALUES (%s,%s,%s,%s,%s,%s)
-#     ON CONFLICT (dt) DO UPDATE SET
-#       trend = EXCLUDED.trend,
-#       spx_close = EXCLUDED.spx_close,
-#       gold_close = EXCLUDED.gold_close,
-#       gold_to_spx_ratio = EXCLUDED.gold_to_spx_ratio,
-#       spx_to_gold_ratio = EXCLUDED.spx_to_gold_ratio;
-#     """
+    row = df.iloc[0]
+    vals = (
+        row["dt"],
+        row["trend"],
+        row["indicator"],
+        float(row["spx_close"]),
+        float(row["gold_close"]),
+        float(row["gold_to_spx_ratio"]),
+        float(row["spx_to_gold_ratio"]),
+        float(row["sma_50"]),
+        float(row["sma_200"])
+    )
 
-#     row = df.iloc[0]
-#     vals = (
-#         row["dt"],
-#         row["trend"],
-#         float(row["spx_close"]),
-#         float(row["gold_close"]),
-#         float(row["gold_to_spx_ratio"]),
-#         float(row["spx_to_gold_ratio"]),
-#     )
-
-#     conn = psycopg2.connect(
-#         host=PGHOST, port=PGPORT, user=PGUSER, password=PGPASSWORD, dbname=PGDATABASE
-#     )
-#     with conn:
-#         with conn.cursor() as cur:
-#             cur.execute(create_sql)
-#             cur.execute(upsert_sql, vals)
-#     conn.close()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(create_sql)
+            cur.execute(upsert_sql, vals)
 
 
 if __name__ == "__main__":
@@ -183,5 +187,6 @@ if __name__ == "__main__":
     logging.info(f"\n{ind}")
     gold_row = make_gold_row(ind)
     logging.info(f"\n{gold_row}")
-    # upsert_gold(gold_row)
-    # print(f"Upserted {GOLD_TABLE} for dt={REPORT_DATE}")
+    upsert_gold(conn, gold_row)
+    conn.close()
+    print(f"Upserted {GOLD_TABLE} for dt={REPORT_DATE}")
