@@ -23,6 +23,8 @@ From `infra/`
       gcloud secrets versions add FRED_API_KEY --data-file=- --project macrocontext    
     $ echo -n "RANDOMPASSWORD" | \
       gcloud secrets versions add GOLD_POSTGRES_PASSWORD --data-file=- --project macrocontext
+    $ echo -n "RANDOMPASSWORD" | \
+      gcloud secrets versions add METABASE_DB_PASSWORD --data-file=- --project macrocontext
 
 # DEPENDENCIES
   Make sure to install Google Cloud Auth Proxy for Testing Locally...
