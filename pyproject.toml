@@ -1,0 +1,23 @@
+[project]
+name = "applied-complexity"
+version = "0.1.0"
+description = "Medallion data pipeline: ingestors, processors, indicators, publishers"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.42.33",
+    "click>=8.0.0",
+    "cloud-sql-python-connector>=1.20.0",
+    "db-dtypes>=1.4.4",
+    "fredapi>=0.5.2",
+    "gcsfs>=2026.2.0",
+    "google-cloud>=0.34.0",
+    "google-cloud-bigquery>=3.40.0",
+    "google-cloud-bigquery-storage>=2.36.0",
+    "google-cloud-storage>=3.8.0",
+    "numpy>=2.4.2",
+    "pandas>=3.0.0",
+    "pg8000>=1.31.5",
+    "psycopg2-binary>=2.9.11",
+    "pyarrow>=23.0.0",
+]

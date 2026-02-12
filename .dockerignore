@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.env
+.env-sample
+infra/
+metabase/
+*.md
+.python-version
