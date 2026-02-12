@@ -26,7 +26,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY mc.py ./
+COPY mc.py backfill.py ./
 COPY ingestors/ ./ingestors/
 COPY processors/ ./processors/
 COPY indicators/ ./indicators/
@@ -43,7 +43,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY mc.py ./
+COPY mc.py backfill.py ./
 COPY ingestors/ ./ingestors/
 COPY processors/ ./processors/
 COPY indicators/ ./indicators/
@@ -60,7 +60,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY mc.py ./
+COPY mc.py backfill.py ./
 COPY ingestors/ ./ingestors/
 COPY processors/ ./processors/
 COPY indicators/ ./indicators/
@@ -77,7 +77,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY mc.py ./
+COPY mc.py backfill.py ./
 COPY ingestors/ ./ingestors/
 COPY processors/ ./processors/
 COPY indicators/ ./indicators/

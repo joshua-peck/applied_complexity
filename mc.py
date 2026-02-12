@@ -7,6 +7,7 @@ from ingestors import ingestors
 from processors import processors
 from indicators import indicators
 from publishers import publishers
+from backfill import cli as backfill_cli
 
 
 @click.group()
@@ -19,6 +20,7 @@ cli.add_command(ingestors)
 cli.add_command(processors)
 cli.add_command(indicators)
 cli.add_command(publishers)
+cli.add_command(backfill_cli, "backfill")
 
 
 if __name__ == "__main__":
