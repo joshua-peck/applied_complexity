@@ -1,3 +1,38 @@
+# PIPELINE CLI (Unified Category-Module)
+
+Single `uv` workspace with Click CLI. Run from project root:
+
+```bash
+# Sync dependencies
+uv sync
+
+# Discover commands
+uv run python mc.py --help
+uv run python mc.py ingestors --help   # fred, massive, backfill_history
+uv run python mc.py processors --help # stock_features_daily
+uv run python mc.py indicators --help # spx_gold_daily
+uv run python mc.py publishers --help # spx_gold_trend
+
+# Run a script
+uv run python mc.py ingestors fred
+uv run python mc.py ingestors massive --report-date 2026-01-15
+uv run python mc.py processors stock_features_daily
+uv run python mc.py indicators spx_gold_daily
+uv run python mc.py publishers spx_gold_trend
+```
+
+**Docker (multi-stage):**
+
+```bash
+make build-ingestors    # pipeline-ingestors:latest
+make build-processors  # pipeline-processors:latest
+make build-indicators  # pipeline-indicators:latest
+make build-publishers  # pipeline-publishers:latest
+
+make run-massive       # Run massive ingestor container
+```
+
+---
 
 # INITIALIZE PROJECT
 From `infra/`
