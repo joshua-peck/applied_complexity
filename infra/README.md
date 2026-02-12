@@ -1,3 +1,23 @@
+# INFRA LAYOUT (TERRAFORM)
+
+| File | Purpose |
+|------|--------|
+| `main.tf` | Provider config only |
+| `landing_zone.tf` | Landing bucket (immutable archive) |
+| `bronze.tf` | Bronze GCS bucket, BigLake connection, bronze catalog + external tables, IAM |
+| `silver.tf` | Silver GCS bucket, silver catalog + series/indicator external tables, IAM |
+| `gold.tf` | VPC, Cloud SQL, gold + provenance DBs, dev IAM |
+| `metabase.tf` | Metabase app DB, SA, Cloud Run, secrets |
+| `ingestors.tf` | Placeholder for ingest job infra (Cloud Run, Scheduler, etc.) |
+| `processors.tf` | Placeholder for processor job infra |
+| `indicators.tf` | Placeholder for indicator job infra |
+| `publishers.tf` | Placeholder for publisher job infra |
+| `backend.tf` | GCS backend |
+| `secrets.tf` | Secret Manager resources |
+| `variables.tf` | All variables (including `data_providers`, `silver_series`, `silver_indicators`) |
+
+---
+
 # DATA ARCHITECTURE
 ## MEDALLION + LANDING ZONE
 

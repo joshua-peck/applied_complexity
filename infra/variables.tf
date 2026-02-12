@@ -23,3 +23,22 @@ variable "gold_postgres_password" {
   type        = string
   sensitive   = true
 }
+
+# --- Medallion / data layer ---
+variable "data_providers" {
+  type        = set(string)
+  default     = ["fred", "massive"]
+  description = "Data providers with bronze external tables"
+}
+
+variable "silver_series" {
+  type        = set(string)
+  default     = ["us_stocks_sip"]
+  description = "Silver series (e.g. from feature processors)"
+}
+
+variable "silver_indicators" {
+  type        = set(string)
+  default     = ["gold_to_spx"]
+  description = "Silver indicator names (e.g. from indicator jobs)"
+}
