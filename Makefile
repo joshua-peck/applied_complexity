@@ -14,7 +14,7 @@ REGION ?= us-central1
 IMAGE_BASE = $(REGION)-docker.pkg.dev/$(PROJECT_ID)/pipeline
 
 # Platform for Cloud Run (linux/amd64 required; default arm64 on Apple Silicon)
-PLATFORM ?= arm64
+PLATFORM ?= linux/arm64
 # PLATFORM ?= linux/amd64
 
 

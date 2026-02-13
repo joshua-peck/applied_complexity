@@ -3,6 +3,7 @@
 
 import logging
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -38,6 +39,7 @@ def run(
     env_file: str = ".env",
     version: str = VERSION,
     series_id: str | None = None,
+    interactive: bool = True,
 ) -> int:
     """Run the stage container for a single date. Returns 0 on success, non-zero on failure."""
     config = STAGE_CONFIG[stage]
@@ -45,7 +47,7 @@ def run(
     cmd = [
         "docker",
         "run",
-        "-it",
+        "--rm",
         "--env-file",
         env_file,
         "-v",
@@ -54,12 +56,16 @@ def run(
         "GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/creds.json",
         "-e",
         f"REPORT_DATE={rundate}",
+    ]
+    if interactive:
+        cmd.extend(["-it"])
+    cmd.extend([
         "-t",
         f"{tag}:{version}",
         *config["cmd"],
         "--report-date",
         rundate,
-    ]
+    ])
     if series_id is not None and stage == "ingestors":
         cmd.extend(["--series-id", series_id])
     result = subprocess.run(cmd, text=True)
@@ -114,6 +120,12 @@ def run(
     default=True,
     help="Skip missing dates (e.g. weekends, holidays) and continue. Default: True.",
 )
+@click.option(
+    "--workers",
+    type=int,
+    default=20,
+    help="Number of dates to run in parallel. Default: 20.",
+)
 def cli(
     stage: str,
     start: datetime | None,
@@ -123,6 +135,7 @@ def cli(
     series_id: str | None,
     version: str,
     continue_on_error: bool,
+    workers: int,
 ) -> None:
     """Backfill pipeline by running container for each date. Run stages in order: ingestors → processors → indicators → publishers."""
     logging.basicConfig(
@@ -139,6 +152,7 @@ def cli(
             env_file=env_file,
             version=version,
             series_id=series_id,
+            interactive=True,
         )
         if rc != 0 and not continue_on_error:
             raise SystemExit(rc)
@@ -150,23 +164,58 @@ def cli(
     delta = timedelta(days=1)
     current = start.date()
     end_date = end.date()
-    failed_dates: list[str] = []
+    dates = []
     while current < end_date:
-        logging.info(f"[{stage}] Running for: {current}")
+        dates.append(current.strftime("%Y-%m-%d"))
+        current += delta
+
+    failed_dates: list[str] = []
+    interactive = workers <= 1
+
+    def run_one(rundate: str) -> tuple[str, int]:
         rc = run(
-            current.strftime("%Y-%m-%d"),
+            rundate,
             stage,
             env_file=env_file,
             version=version,
             series_id=series_id,
+            interactive=interactive,
         )
-        if rc != 0:
-            if continue_on_error:
-                logging.warning(f"[{stage}] Skipping {current} (failed, continuing)")
-                failed_dates.append(current.strftime("%Y-%m-%d"))
-            else:
-                raise SystemExit(rc)
-        current += delta
+        return (rundate, rc)
+
+    try:
+        if workers <= 1:
+            for rundate in dates:
+                logging.info(f"[{stage}] Running for: {rundate}")
+                _, rc = run_one(rundate)
+                if rc != 0:
+                    if continue_on_error:
+                        logging.warning(f"[{stage}] Skipping {rundate} (failed, continuing)")
+                        failed_dates.append(rundate)
+                    else:
+                        raise SystemExit(rc)
+        else:
+            logging.info(f"[{stage}] Running {len(dates)} dates with {workers} workers")
+            executor = ThreadPoolExecutor(max_workers=workers)
+            try:
+                futures = {executor.submit(run_one, d): d for d in dates}
+                for future in as_completed(futures):
+                    rundate, rc = future.result()
+                    if rc != 0:
+                        if continue_on_error:
+                            logging.warning(f"[{stage}] Skipping {rundate} (failed, continuing)")
+                            failed_dates.append(rundate)
+                        else:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            raise SystemExit(rc)
+            except KeyboardInterrupt:
+                logging.info(f"[{stage}] Interrupted (Ctrl+C), shutting down...")
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise SystemExit(130)
+            executor.shutdown(wait=True)
+    except KeyboardInterrupt:
+        logging.info(f"[{stage}] Interrupted (Ctrl+C)")
+        raise SystemExit(130)
 
     if failed_dates:
         logging.info(f"[{stage}] Completed with {len(failed_dates)} skipped dates (e.g. weekends/holidays)")
