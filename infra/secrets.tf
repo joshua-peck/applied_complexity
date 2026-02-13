@@ -32,3 +32,26 @@ resource "google_secret_manager_secret_iam_member" "accessor" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "user:${var.developer_email}"
 }
+
+# Massive data provider credentials (populate via gcloud after apply)
+resource "google_secret_manager_secret" "massive_access_key" {
+  secret_id = "MASSIVE_ACCESS_KEY_ID"
+  replication {
+    user_managed {
+      replicas {
+        location = "us-central1"
+      }
+    }
+  }
+}
+
+resource "google_secret_manager_secret" "massive_secret_key" {
+  secret_id = "MASSIVE_SECRET_ACCESS_KEY"
+  replication {
+    user_managed {
+      replicas {
+        location = "us-central1"
+      }
+    }
+  }
+}

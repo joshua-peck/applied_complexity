@@ -24,6 +24,12 @@ variable "gold_postgres_password" {
   sensitive   = true
 }
 
+variable "pipeline_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Docker image tag for pipeline images (ingestors, processors, indicators, publishers)"
+}
+
 # --- Medallion / data layer ---
 variable "data_providers" {
   type        = set(string)

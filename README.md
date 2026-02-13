@@ -61,6 +61,17 @@ From `infra/`
     $ echo -n "RANDOMPASSWORD" | \
       gcloud secrets versions add METABASE_DB_PASSWORD --data-file=- --project macrocontext
 
+  Use this shorthand to get all the secrets in .env...
+
+    $ while IFS='=' read -r key value; do
+      [[ -z "$key" || "$key" =~ ^# ]] && continue
+      # Strip quotes from value
+      value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+      echo -n "$value" | gcloud secrets create "$key" --data-file=- 2>/dev/null || \
+        echo -n "$value" | gcloud secrets versions add "$key" --data-file=-
+    done < .env
+
+
 # DEPENDENCIES
   Make sure to install Google Cloud Auth Proxy for Testing Locally...
   https://docs.cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy

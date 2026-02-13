@@ -7,6 +7,16 @@ VERSION ?= latest
 REPORT_DATE ?= $(shell date +%Y-%m-%d)
 BACKFILL_START ?= 2022-02-12
 BACKFILL_END ?= $(shell date +%Y-%m-%d)
+PROJECT_ID ?= macrocontext
+REGION ?= us-central1
+
+# Artifact Registry base (must match infra/pipeline.tf)
+IMAGE_BASE = $(REGION)-docker.pkg.dev/$(PROJECT_ID)/pipeline
+
+# Platform for Cloud Run (linux/amd64 required; default arm64 on Apple Silicon)
+PLATFORM ?= arm64
+# PLATFORM ?= linux/amd64
+
 
 # Image tags per category
 INGESTOR_TAG = $(TAG)-ingestors
@@ -15,6 +25,7 @@ INDICATOR_TAG = $(TAG)-indicators
 PUBLISHER_TAG = $(TAG)-publishers
 
 .PHONY: build-ingestors build-processors build-indicators build-publishers
+.PHONY: push-ingestors push-processors push-indicators push-publishers push-all
 .PHONY: run-ingestors run-processors run-indicators run-publishers
 .PHONY: run-fred run-massive run-stock-features run-spx-gold run-spx-gold-trend
 .PHONY: backfill-massive backfill-fred backfill-processors backfill-indicators backfill-publishers backfill-all
@@ -26,6 +37,11 @@ help:
 	@echo "  build-processors  - Build processor image"
 	@echo "  build-indicators - Build indicator image"
 	@echo "  build-publishers - Build publisher image"
+	@echo "  push-ingestors   - Build and push ingestor to Artifact Registry"
+	@echo "  push-processors  - Build and push processor to Artifact Registry"
+	@echo "  push-indicators  - Build and push indicator to Artifact Registry"
+	@echo "  push-publishers  - Build and push publisher to Artifact Registry"
+	@echo "  push-all         - Build and push all images to Artifact Registry"
 	@echo "  run-massive      - Run massive ingestor (docker)"
 	@echo "  run-fred         - Run fred ingestor (docker)"
 	@echo "  run-stock-features - Run stock_features_daily processor (docker)"
@@ -43,16 +59,35 @@ sync:
 	uv sync
 
 build-ingestors:
-	docker build -t $(INGESTOR_TAG):$(VERSION) --target ingestor .
+	docker build --platform $(PLATFORM) -t $(INGESTOR_TAG):$(VERSION) --target ingestor .
 
 build-processors:
-	docker build -t $(PROCESSOR_TAG):$(VERSION) --target processor .
+	docker build --platform $(PLATFORM) -t $(PROCESSOR_TAG):$(VERSION) --target processor .
 
 build-indicators:
-	docker build -t $(INDICATOR_TAG):$(VERSION) --target indicator .
+	docker build --platform $(PLATFORM) -t $(INDICATOR_TAG):$(VERSION) --target indicator .
 
 build-publishers:
-	docker build -t $(PUBLISHER_TAG):$(VERSION) --target publisher .
+	docker build --platform $(PLATFORM) -t $(PUBLISHER_TAG):$(VERSION) --target publisher .
+
+# Push to Artifact Registry (run before terraform apply). Requires: gcloud auth configure-docker $(REGION)-docker.pkg.dev
+push-ingestors: build-ingestors
+	docker tag $(INGESTOR_TAG):$(VERSION) $(IMAGE_BASE)/ingestors:$(VERSION)
+	docker push $(IMAGE_BASE)/ingestors:$(VERSION)
+
+push-processors: build-processors
+	docker tag $(PROCESSOR_TAG):$(VERSION) $(IMAGE_BASE)/processors:$(VERSION)
+	docker push $(IMAGE_BASE)/processors:$(VERSION)
+
+push-indicators: build-indicators
+	docker tag $(INDICATOR_TAG):$(VERSION) $(IMAGE_BASE)/indicators:$(VERSION)
+	docker push $(IMAGE_BASE)/indicators:$(VERSION)
+
+push-publishers: build-publishers
+	docker tag $(PUBLISHER_TAG):$(VERSION) $(IMAGE_BASE)/publishers:$(VERSION)
+	docker push $(IMAGE_BASE)/publishers:$(VERSION)
+
+push-all: push-ingestors push-processors push-indicators push-publishers
 
 # Run ingestor images (requires .env with credentials)
 run-fred:
@@ -112,3 +147,7 @@ backfill-publishers:
 	uv run python mc.py backfill --stage publishers --start $(BACKFILL_START) --end $(BACKFILL_END)
 
 backfill-all: backfill-massive backfill-fred backfill-processors backfill-indicators backfill-publishers
+
+auth:
+	gcloud auth login
+	gcloud auth application-default login
