@@ -123,8 +123,8 @@ def run(
 @click.option(
     "--workers",
     type=int,
-    default=20,
-    help="Number of dates to run in parallel. Default: 20.",
+    default=3,
+    help="Number of dates to run in parallel. Default: 3.",
 )
 def cli(
     stage: str,
