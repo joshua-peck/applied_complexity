@@ -22,34 +22,36 @@ def run(
 ) -> None:
     today = report_date.strftime("%Y-%m-%d") if report_date else datetime.now().strftime("%Y-%m-%d")
     storage_client = storage.Client()
+    try:
+        fred = Fred(api_key=api_key)
+        data = fred.get_series(series_id)
+        info = fred.get_series_info(series_id)
 
-    fred = Fred(api_key=api_key)
-    data = fred.get_series(series_id)
-    info = fred.get_series_info(series_id)
+        landing_zone_blob_path = (
+            f"provider=fred/series={series_id}/frequency={info['frequency_short']}/"
+            f"issued_date={info['last_updated'][:10]}/ingest_date={today}/"
+            f"{info['id']}-{info['last_updated']}.csv"
+        )
+        bucket = storage_client.bucket(landing_zone_bucket)
+        blob = bucket.blob(landing_zone_blob_path)
+        blob.upload_from_string(data.to_csv(), content_type="application/octet-stream")
+        print(f"Successfully uploaded {series_id} to {landing_zone_blob_path}")
 
-    landing_zone_blob_path = (
-        f"provider=fred/series={series_id}/frequency={info['frequency_short']}/"
-        f"issued_date={info['last_updated'][:10]}/ingest_date={today}/"
-        f"{info['id']}-{info['last_updated']}.csv"
-    )
-    bucket = storage_client.bucket(landing_zone_bucket)
-    blob = bucket.blob(landing_zone_blob_path)
-    blob.upload_from_string(data.to_csv(), content_type="application/octet-stream")
-    print(f"Successfully uploaded {series_id} to {landing_zone_blob_path}")
-
-    df = data.to_frame(name="value").reset_index()
-    df.columns = ["date", "value"]
-    bronze_blob_path = (
-        f"provider=fred/series={series_id}/frequency={info['frequency_short']}/"
-        f"issued_date={info['last_updated'][:10]}/ingest_date={today}/"
-        f"{info['id']}-{info['last_updated']}.parquet"
-    )
-    bucket = storage_client.bucket(bronze_bucket)
-    blob = bucket.blob(bronze_blob_path)
-    blob.upload_from_string(
-        df.to_parquet(index=False), content_type="application/octet-stream"
-    )
-    print(f"Successfully uploaded {series_id} to {bronze_blob_path}")
+        df = data.to_frame(name="value").reset_index()
+        df.columns = ["date", "value"]
+        bronze_blob_path = (
+            f"provider=fred/series={series_id}/frequency={info['frequency_short']}/"
+            f"issued_date={info['last_updated'][:10]}/ingest_date={today}/"
+            f"{info['id']}-{info['last_updated']}.parquet"
+        )
+        bucket = storage_client.bucket(bronze_bucket)
+        blob = bucket.blob(bronze_blob_path)
+        blob.upload_from_string(
+            df.to_parquet(index=False), content_type="application/octet-stream"
+        )
+        print(f"Successfully uploaded {series_id} to {bronze_blob_path}")
+    finally:
+        storage_client.close()
 
 
 @click.command()

@@ -49,34 +49,36 @@ def run(
 def _pull_daily_prices(end_dt: date, lookback_days: int) -> pd.DataFrame:
     start_dt = end_dt - timedelta(days=lookback_days)
     bq = bigquery.Client(project=PROJECT_ID)
+    try:
+        sql = f"""
+        SELECT
+          {SYMBOL_COL} AS symbol,
+          SAFE_CAST({DT_COL} AS DATE) AS dt,
+          SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
+        FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_TABLE}`
+        WHERE {SYMBOL_COL} IN UNNEST(@symbols)
+          AND frequency IN ('daily', 'Daily')
+          AND SAFE_CAST({DT_COL} AS DATE) BETWEEN @start_dt AND @end_dt
+          AND {CLOSE_COL} IS NOT NULL
+        ORDER BY dt, symbol
+        """
 
-    sql = f"""
-    SELECT
-      {SYMBOL_COL} AS symbol,
-      SAFE_CAST({DT_COL} AS DATE) AS dt,
-      SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
-    FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_TABLE}`
-    WHERE {SYMBOL_COL} IN UNNEST(@symbols)
-      AND frequency IN ('daily', 'Daily')
-      AND SAFE_CAST({DT_COL} AS DATE) BETWEEN @start_dt AND @end_dt
-      AND {CLOSE_COL} IS NOT NULL
-    ORDER BY dt, symbol
-    """
-
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ArrayQueryParameter("symbols", "STRING", [SYMBOL_SPX, SYMBOL_GOLD]),
-            bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
-            bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
-        ]
-    )
-
-    df = bq.query(sql, job_config=job_config).to_dataframe()
-    if df.empty:
-        raise SystemExit(
-            "No rows returned from Silver. Check SILVER_BQ_TABLE / columns / symbols / dates."
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ArrayQueryParameter("symbols", "STRING", [SYMBOL_SPX, SYMBOL_GOLD]),
+                bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
+                bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
+            ]
         )
-    return df
+
+        df = bq.query(sql, job_config=job_config).to_dataframe()
+        if df.empty:
+            raise SystemExit(
+                "No rows returned from Silver. Check SILVER_BQ_TABLE / columns / symbols / dates."
+            )
+        return df
+    finally:
+        bq.close()
 
 
 def _calculate_gold_to_spx(df: pd.DataFrame) -> pd.DataFrame:
@@ -147,14 +149,17 @@ def _write_indicator(df: pd.DataFrame, dt: date) -> None:
         )
 
     fs = gcsfs.GCSFileSystem()
-    out_path = _gcs_output_path(dt)
-    table = pa.Table.from_pandas(day, preserve_index=False)
+    try:
+        out_path = _gcs_output_path(dt)
+        table = pa.Table.from_pandas(day, preserve_index=False)
 
-    with fs.open(out_path, "wb") as f:
-        pq.write_table(table, f, compression="snappy")
+        with fs.open(out_path, "wb") as f:
+            pq.write_table(table, f, compression="snappy")
 
-    print("Wrote", out_path)
-    print(day.to_string(index=False))
+        print("Wrote", out_path)
+        print(day.to_string(index=False))
+    finally:
+        fs.close()
 
 
 @click.command()

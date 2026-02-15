@@ -46,30 +46,33 @@ def run(
 
 def _read_market_data(start_dt: date, end_dt: date) -> pd.DataFrame:
     bq = bigquery.Client(project=PROJECT_ID)
-    sql = f"""
-    SELECT
-      {SYMBOL_COL} AS symbol,
-      SAFE_CAST({ISSUED_DATE_COL} AS DATE) AS trade_date,
-      SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
-    FROM `{PROJECT_ID}`.`{BRONZE_DATA_LAKE}`.`{BRONZE_BQ_TABLE}`
-    WHERE series = @series
-      AND frequency = @frequency
-      AND SAFE_CAST({ISSUED_DATE_COL} AS DATE) BETWEEN @start_dt AND @end_dt
-      AND {CLOSE_COL} IS NOT NULL
-    ORDER BY symbol, trade_date
-    """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("series", "STRING", SERIES),
-            bigquery.ScalarQueryParameter("frequency", "STRING", FREQUENCY),
-            bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
-            bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
-        ]
-    )
-    df = bq.query(sql, job_config=job_config).to_dataframe()
-    if df.empty:
-        raise SystemExit("No rows returned from Bronze")
-    return df
+    try:
+        sql = f"""
+        SELECT
+          {SYMBOL_COL} AS symbol,
+          SAFE_CAST({ISSUED_DATE_COL} AS DATE) AS trade_date,
+          SAFE_CAST({CLOSE_COL} AS FLOAT64) AS close
+        FROM `{PROJECT_ID}`.`{BRONZE_DATA_LAKE}`.`{BRONZE_BQ_TABLE}`
+        WHERE series = @series
+          AND frequency = @frequency
+          AND SAFE_CAST({ISSUED_DATE_COL} AS DATE) BETWEEN @start_dt AND @end_dt
+          AND {CLOSE_COL} IS NOT NULL
+        ORDER BY symbol, trade_date
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("series", "STRING", SERIES),
+                bigquery.ScalarQueryParameter("frequency", "STRING", FREQUENCY),
+                bigquery.ScalarQueryParameter("start_dt", "DATE", start_dt),
+                bigquery.ScalarQueryParameter("end_dt", "DATE", end_dt),
+            ]
+        )
+        df = bq.query(sql, job_config=job_config).to_dataframe()
+        if df.empty:
+            raise SystemExit("No rows returned from Bronze")
+        return df
+    finally:
+        bq.close()
 
 
 def _gcp_blob_path(end_date: date) -> str:
@@ -90,11 +93,14 @@ def _store_to_silver(df: pd.DataFrame, to: str) -> None:
     )
 
     storage_client = storage.Client()
-    bucket = storage_client.bucket(SILVER_BUCKET)
-    blob = bucket.blob(to)
-    blob.upload_from_string(
-        df.to_parquet(index=False), content_type="application/octet-stream"
-    )
+    try:
+        bucket = storage_client.bucket(SILVER_BUCKET)
+        blob = bucket.blob(to)
+        blob.upload_from_string(
+            df.to_parquet(index=False), content_type="application/octet-stream"
+        )
+    finally:
+        storage_client.close()
 
 
 @click.command()

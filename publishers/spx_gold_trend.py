@@ -81,35 +81,38 @@ def _get_db_connection() -> psycopg2.extensions.connection:
 
 def _read_indicator(report_date: str) -> pd.DataFrame:
     bq = bigquery.Client(project=PROJECT_ID)
-    sql = f"""
-    SELECT
-      SAFE_CAST(dt AS DATE) AS dt,
-      SAFE_CAST(indicator AS STRING) AS indicator,
-      SAFE_CAST(gold_close AS FLOAT64) AS gold_close,
-      SAFE_CAST(spx_close AS FLOAT64) AS spx_close,
-      SAFE_CAST(value AS FLOAT64) AS gold_to_spx_ratio,
-      SAFE_CAST(inverse_value AS FLOAT64) AS spx_to_gold_ratio,
-      SAFE_CAST(trend AS STRING) AS trend,
-      SAFE_CAST(sma_50 AS FLOAT64) AS sma_50,
-      SAFE_CAST(sma_200 AS FLOAT64) AS sma_200
-    FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_INDICATOR_TABLE}`
-    WHERE indicator = @indicator
-      AND frequency IN ('daily', 'Daily')
-      AND SAFE_CAST(dt AS DATE) = @report_date
-    ORDER BY dt, indicator
-    """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("indicator", "STRING", INDICATOR_ID),
-            bigquery.ScalarQueryParameter("report_date", "DATE", report_date),
-        ]
-    )
-    df = bq.query(sql, job_config=job_config).to_dataframe()
-    if df.empty:
-        raise SystemExit(
-            "No rows returned from Silver. Check SILVER_BQ_TABLE / columns / dates."
+    try:
+        sql = f"""
+        SELECT
+          SAFE_CAST(dt AS DATE) AS dt,
+          SAFE_CAST(indicator AS STRING) AS indicator,
+          SAFE_CAST(gold_close AS FLOAT64) AS gold_close,
+          SAFE_CAST(spx_close AS FLOAT64) AS spx_close,
+          SAFE_CAST(value AS FLOAT64) AS gold_to_spx_ratio,
+          SAFE_CAST(inverse_value AS FLOAT64) AS spx_to_gold_ratio,
+          SAFE_CAST(trend AS STRING) AS trend,
+          SAFE_CAST(sma_50 AS FLOAT64) AS sma_50,
+          SAFE_CAST(sma_200 AS FLOAT64) AS sma_200
+        FROM `{PROJECT_ID}`.`{SILVER_DATA_LAKE}`.`{SILVER_BQ_INDICATOR_TABLE}`
+        WHERE indicator = @indicator
+          AND frequency IN ('daily', 'Daily')
+          AND SAFE_CAST(dt AS DATE) = @report_date
+        ORDER BY dt, indicator
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("indicator", "STRING", INDICATOR_ID),
+                bigquery.ScalarQueryParameter("report_date", "DATE", report_date),
+            ]
         )
-    return df
+        df = bq.query(sql, job_config=job_config).to_dataframe()
+        if df.empty:
+            raise SystemExit(
+                "No rows returned from Silver. Check SILVER_BQ_TABLE / columns / dates."
+            )
+        return df
+    finally:
+        bq.close()
 
 
 def _make_gold_row(indicator_df: pd.DataFrame) -> pd.DataFrame:

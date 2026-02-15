@@ -64,42 +64,46 @@ def run(
         config=botocore.config.Config(signature_version="s3v4"),
     )
 
-    agg = _report_aggregation_stub(resolution)
-    source_object_key = _massive_object_key(series_id, agg, report_date)
+    try:
+        agg = _report_aggregation_stub(resolution)
+        source_object_key = _massive_object_key(series_id, agg, report_date)
 
-    with tempfile.TemporaryFile() as tmpfile:
-        try:
-            s3.download_fileobj(SOURCE_BUCKET_NAME, source_object_key, tmpfile)
-            logging.info(
-                f"Massive source file downloaded: {SOURCE_BUCKET_NAME}/{source_object_key}"
-            )
+        with tempfile.TemporaryFile() as tmpfile:
+            try:
+                s3.download_fileobj(SOURCE_BUCKET_NAME, source_object_key, tmpfile)
+                logging.info(
+                    f"Massive source file downloaded: {SOURCE_BUCKET_NAME}/{source_object_key}"
+                )
 
-            tmpfile.seek(0)
-            landing_zone_blob_path = _gcp_blob_path(
-                series_id, resolution, report_date, ".csv.gz"
-            )
-            bucket = storage_client.bucket(landing_zone_bucket)
-            blob = bucket.blob(landing_zone_blob_path)
-            blob.upload_from_file(tmpfile)
-            logging.info(
-                f"Landing Zone file uploaded: {landing_zone_bucket}/{landing_zone_blob_path}"
-            )
+                tmpfile.seek(0)
+                landing_zone_blob_path = _gcp_blob_path(
+                    series_id, resolution, report_date, ".csv.gz"
+                )
+                bucket = storage_client.bucket(landing_zone_bucket)
+                blob = bucket.blob(landing_zone_blob_path)
+                blob.upload_from_file(tmpfile)
+                logging.info(
+                    f"Landing Zone file uploaded: {landing_zone_bucket}/{landing_zone_blob_path}"
+                )
 
-            tmpfile.seek(0)
-            df = pd.read_csv(tmpfile, compression="gzip")
-            bronze_blob_path = _gcp_blob_path(
-                series_id, resolution, report_date, ".parquet"
-            )
-            bucket = storage_client.bucket(bronze_bucket)
-            blob = bucket.blob(bronze_blob_path)
-            blob.upload_from_string(
-                df.to_parquet(index=False), content_type="application/octet-stream"
-            )
-            logging.info(f"Bronze file uploaded: {bronze_bucket}/{bronze_blob_path}")
-        except Exception as e:
-            raise SystemExit(
-                f"Error ingesting file ({source_object_key}): {type(e).__name__}: {e}"
-            ) from e
+                tmpfile.seek(0)
+                df = pd.read_csv(tmpfile, compression="gzip")
+                bronze_blob_path = _gcp_blob_path(
+                    series_id, resolution, report_date, ".parquet"
+                )
+                bucket = storage_client.bucket(bronze_bucket)
+                blob = bucket.blob(bronze_blob_path)
+                blob.upload_from_string(
+                    df.to_parquet(index=False), content_type="application/octet-stream"
+                )
+                logging.info(f"Bronze file uploaded: {bronze_bucket}/{bronze_blob_path}")
+            except Exception as e:
+                raise SystemExit(
+                    f"Error ingesting file ({source_object_key}): {type(e).__name__}: {e}"
+                ) from e
+    finally:
+        storage_client.close()
+        s3.close()
 
 
 @click.command()
